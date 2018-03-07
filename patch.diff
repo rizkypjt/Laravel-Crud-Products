@@ -1,0 +1,211 @@
+From 6e9aa4340ddc60de2606c52ba0cf23895f8aaf60 Mon Sep 17 00:00:00 2001
+From: Vindi pop ardinoto <ardino.pop@gmail.com>
+Date: Fri, 19 Jan 2018 18:38:15 +0700
+Subject: [PATCH] CRUD using laravel 5.5
+
+---
+ app/Http/Controllers/ProductController.php | 51 +++++++++++++++++++++++++++---
+ app/Product.php                            |  2 +-
+ resources/views/products/edit.blade.php    | 47 +++++++++++++++++++++++++++
+ resources/views/products/index.blade.php   | 48 ++++++++++++++++++++++++++++
+ 4 files changed, 143 insertions(+), 5 deletions(-)
+ create mode 100644 resources/views/products/edit.blade.php
+ create mode 100644 resources/views/products/index.blade.php
+
+diff --git a/app/Http/Controllers/ProductController.php b/app/Http/Controllers/ProductController.php
+index adaae9f..7b7f0bb 100644
+--- a/app/Http/Controllers/ProductController.php
++++ b/app/Http/Controllers/ProductController.php
+@@ -3,7 +3,7 @@
+ namespace App\Http\Controllers;
+ 
+ use Illuminate\Http\Request;
+-use app\Product;
++use App\Product;
+ 
+ class ProductController extends Controller
+ {
+@@ -13,14 +13,57 @@ class ProductController extends Controller
+         return view('products.create');
+     }
+ 
++
+     public function store(Request $request){
+-        $Product = $this->validate(request(),[
++        $product = $this->validate(request(), [
++          'name' => 'required',
++          'price' => 'required|numeric'
++        ]);
++        
++        Product::create($product);
++
++        return back()->with('success', 'Product berhasil');;
++    }
++
++   public function index()
++    {
++        $products = Product::all()->toArray();
++        return view('products.index', compact('products'));
++    }
++
++    // public function edit($id){
++    //     $product = Product::find($id);
++    //     return view('products.edit',compact('product','id'));
++    // }
++
++    public function edit($id)
++    {
++        $product = Product::find($id);
++        return view('products.edit',compact('product','id'));
++    }
++
++    //fungsi update
++
++    public function update(Request $request, $id){
++        $product = Product::find($id);
++        $this->validate(request(),[
+             'name' => 'required',
+             'price' => 'required|numeric'
+         ]);
+ 
+-        Product::create($product);
++        $product->name = $request->get('name');
++        $product->price = $request->get('price');
++        $product->save();
++        return redirect('products')->with('success', 'Product has been updated');
++    }
++
++    //fungsi Delete
++
++    public function destroy($id){
+ 
+-        return back()->with('succes', 'Product has been added');
++        $product = Product::find($id);
++        $product->delete();
++        return redirect('products')->with('success', 'we are Delete Product');
+     }
++   
+ }
+diff --git a/app/Product.php b/app/Product.php
+index ce5577b..ed0ad0f 100644
+--- a/app/Product.php
++++ b/app/Product.php
+@@ -7,5 +7,5 @@ use Illuminate\Database\Eloquent\Model;
+ class Product extends Model
+ {
+     //
+-    protected $fillable =['name','price'];
++    protected $fillable = ['name','price'];
+ }
+diff --git a/resources/views/products/edit.blade.php b/resources/views/products/edit.blade.php
+new file mode 100644
+index 0000000..2823283
+--- /dev/null
++++ b/resources/views/products/edit.blade.php
+@@ -0,0 +1,47 @@
++<!DOCTYPE html>
++<html>
++  <head>
++    <meta charset="utf-8">
++    <title>Laravel 5.5 CRUD Tutorial With Example From Scratch </title>
++    <link rel="stylesheet" href="{{asset('css/app.css')}}">
++  </head>
++  <body>
++    <div class="container">
++      <h2>Edit A Product</h2><br  />
++      @if ($errors->any())
++      <div class="alert alert-danger">
++          <ul>
++              @foreach ($errors->all() as $error)
++                  <li>{{ $error }}</li>
++              @endforeach
++          </ul>
++      </div><br />
++      @endif
++      <form method="post" action="{{action('ProductController@update', $id)}}">
++        {{csrf_field()}}
++        <input name="_method" type="hidden" value="PATCH">
++        <div class="row">
++          <div class="col-md-4"></div>
++          <div class="form-group col-md-4">
++            <label for="name">Name:</label>
++            <input type="text" class="form-control" name="name" value="{{$product->name}}">
++          </div>
++        </div>
++        <div class="row">
++          <div class="col-md-4"></div>
++            <div class="form-group col-md-4">
++              <label for="price">Price:</label>
++              <input type="text" class="form-control" name="price" value="{{$product->price}}">
++            </div>
++          </div>
++        </div>
++        <div class="row">
++          <div class="col-md-4"></div>
++          <div class="form-group col-md-4">
++            <button type="submit" class="btn btn-success" style="margin-left:38px">Update Product</button>
++          </div>
++        </div>
++      </form>
++    </div>
++  </body>
++</html>
+\ No newline at end of file
+diff --git a/resources/views/products/index.blade.php b/resources/views/products/index.blade.php
+new file mode 100644
+index 0000000..89f01be
+--- /dev/null
++++ b/resources/views/products/index.blade.php
+@@ -0,0 +1,48 @@
++<!-- index.blade.php -->
++
++<!DOCTYPE html>
++<html>
++  <head>
++    <meta charset="utf-8">
++    <title>Index Page</title>
++    <link rel="stylesheet" href="{{asset('css/app.css')}}">
++  </head>
++  <body>
++    <div class="container">
++    <br />
++    @if (\Session::has('success'))
++      <div class="alert alert-success">
++        <p>{{ \Session::get('success') }}</p>
++      </div><br />
++     @endif
++    <table class="table table-striped">
++    <thead>
++      <tr>
++        <th>ID</th>
++        <th>Name</th>
++        <th>Price</th>
++        <th colspan="2">Action</th>
++      </tr>
++    </thead>
++    <tbody>
++        <a href="{{route('/create.blade')}}" class="btn btn-info btn-lg"><span class="glyphicon glyphicon-edit"></span> INSERT DATA</a>
++      @foreach($products as $product)
++      <tr>
++        <td>{{$product['id']}}</td>
++        <td>{{$product['name']}}</td>
++        <td>{{$product['price']}}</td>
++        <td><a href="{{action('ProductController@edit', $product['id'])}}" class="btn btn-warning">Edit</a></td>
++        <td>
++          <form action="{{action('ProductController@destroy', $product['id'])}}" method="post">
++            {{csrf_field()}}
++            <input name="_method" type="hidden" value="DELETE">
++            <button class="btn btn-danger" type="submit">Delete</button>
++          </form>
++        </td>
++      </tr>
++      @endforeach
++    </tbody>
++  </table>
++  </div>
++  </body>
++</html>
+\ No newline at end of file
+-- 
+2.14.1.windows.1
+
